@@ -1,0 +1,37 @@
+{
+  "timeZone": "America/New_York",
+  "dependencies": {
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "sheets": {
+    "macros": [{
+      "menuName": "clearAndPaste",
+      "functionName": "clearAndPaste"
+    }, {
+      "menuName": "Untitled Macro",
+      "functionName": "UntitledMacro"
+    }, {
+      "menuName": "Untitled Macro 1",
+      "functionName": "UntitledMacro1"
+    }, {
+      "menuName": "getCsvData",
+      "functionName": "getCsvData"
+    }, {
+      "menuName": "resetShopifyData",
+      "functionName": "resetShopifyData"
+    }, {
+      "menuName": "resetAdagioData",
+      "functionName": "resetAdagioData"
+    }, {
+      "menuName": "Untitled Macro",
+      "functionName": "UntitledMacro"
+    }, {
+      "menuName": "Untitled Macro",
+      "functionName": "UntitledMacro"
+    }, {
+      "menuName": "Untitled Macro",
+      "functionName": "UntitledMacro"
+    }]
+  }
+}
