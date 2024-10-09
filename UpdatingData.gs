@@ -22,7 +22,7 @@ function onChange(e)
         {
           const values = sheets[sheet].getRange(1, 1, info[numRows], info[numCols]).getValues();
           var dataSheet = (values[0][2] === 'Body (HTML)') ? sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromShopify')] : (values[0][2] === 'disabled Body') ? 
-                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromAdagio')]  : null;
+                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromAdagio' )] : null;
 
           if (dataSheet !== null)
           {
@@ -32,11 +32,12 @@ function onChange(e)
               replaceLeadingApostrophesOnVariantSKUs(dataSheet, info[numCols], info[numRows], spreadsheet);
             else
               ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
-          }
-            
+          }      
           
-          if (sheets[sheet].getSheetName().substring(0, 7) !== "Copy Of") // Don't delete the sheets that are duplicates
-            spreadsheet.deleteSheet(sheets[sheet]) // Delete the new sheet(s) that was created
+          const sheetName = sheets[sheet].getSheetName();
+          
+          if (sheetName.substring(0, 7) !== "Copy Of" && sheetName !== 'FromAdagio' && sheetName !== 'FromShopify') // Don't delete the sheets that are duplicates
+            spreadsheet.deleteSheet(sheets[sheet]) // Delete the new sheet that was created
 
           break;
         }
@@ -649,6 +650,7 @@ function OnWebWithNoInventory()
   const        sheet = spreadsheet.getSheetByName('On Web No Inventory');
   const shopifySheet = spreadsheet.getSheetByName('FromShopify');
   const adagioData = Utilities.parseCsv(DriveApp.getFilesByName("inventory.csv").next().getBlob().getDataAsString());
+  const itemNum = adagioData[0].indexOf('Item #')
   var numItems_Shopify, data = [], shopifyData = [], numItems_Adagio = adagioData.length, adagioQty = [[], []], masterSkuList = [], backgroundColours = [];
 
   [shopifyData, numItems_Shopify] = generateData(shopifySheet);
@@ -658,7 +660,7 @@ function OnWebWithNoInventory()
     for (var j = 1; j < numItems_Adagio; j++)
     {
       // Shopify item SKU is not blank (i.e. it is not a Picture line) and the SKUs match
-      if (((shopifyData[i][SKU] !== '') && (adagioData[j][SKU].toString().toLowerCase() == shopifyData[i][SKU].toString().toLowerCase()))
+      if (((shopifyData[i][SKU] !== '') && (adagioData[j][itemNum].toString().toLowerCase() == shopifyData[i][SKU].toString().toLowerCase()))
                                         && adagioData[j][QTY] <= 0)
       {
         adagioQty[0].push(shopifyData[i][SKU]);
@@ -723,6 +725,7 @@ function NotOnWebWithInventory()
   const        sheet = spreadsheet.getSheetByName('Not On Web With Inventory');
   const shopifySheet = spreadsheet.getSheetByName('FromShopify');
   const adagioData = Utilities.parseCsv(DriveApp.getFilesByName("inventory.csv").next().getBlob().getDataAsString());
+  const itemNum = adagioData[0].indexOf('Item #')
   var data = [], shopifyData = [], numItems_Adagio = adagioData.length, adagioQty = [[], []], masterSkuList = [], backgroundColours = [];
 
   var fullData = shopifySheet.getDataRange().getValues();
@@ -772,7 +775,7 @@ function NotOnWebWithInventory()
     for (var j = 1; j < numItems_Adagio; j++)
     {
       // Shopify item SKU is not blank (i.e. it is not a Picture line) and the SKUs match
-      if (((shopifyData[i][SKU] !== '') && (adagioData[j][SKU].toString().toLowerCase() == shopifyData[i][SKU].toString().toLowerCase()))
+      if (((shopifyData[i][SKU] !== '') && (adagioData[j][itemNum].toString().toLowerCase() == shopifyData[i][SKU].toString().toLowerCase()))
                                         && adagioData[j][QTY] > 0)
       {
         adagioQty[0].push(shopifyData[i][SKU]);
