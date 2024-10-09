@@ -22,7 +22,8 @@ function onChange(e)
         {
           const values = sheets[sheet].getRange(1, 1, info[numRows], info[numCols]).getValues();
           var dataSheet = (values[0][2] === 'Body (HTML)') ? sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromShopify')] : (values[0][2] === 'disabled Body') ? 
-                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromAdagio' )] : null;
+                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromAdagio' )] : (values[0][2] === 'Price Type'   ) ? 
+                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('Discounts'  )] : null;
 
           if (dataSheet !== null)
           {
@@ -30,7 +31,7 @@ function onChange(e)
 
             if (dataSheet.getSheetName() == 'FromShopify')
               replaceLeadingApostrophesOnVariantSKUs(dataSheet, info[numCols], info[numRows], spreadsheet);
-            else
+            else if (dataSheet.getSheetName() == 'FromAdagio')
               ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
           }      
           
