@@ -27,17 +27,38 @@ function onChange(e)
 
           if (dataSheet !== null)
           {
-            dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values)
+            const dataSheetName = dataSheet.getSheetName();
+            
+            if (dataSheetName !== 'Discounts')
+            {
+              dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values)
 
-            if (dataSheet.getSheetName() == 'FromShopify')
-              replaceLeadingApostrophesOnVariantSKUs(dataSheet, info[numCols], info[numRows], spreadsheet);
-            else if (dataSheet.getSheetName() == 'FromAdagio')
-              ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
+              if (dataSheet.getSheetName() == 'FromShopify')
+                replaceLeadingApostrophesOnVariantSKUs(dataSheet, info[numCols], info[numRows], spreadsheet);
+              else 
+                ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
+            }
+            else // The discounts are being uploaded
+            {
+              spreadsheet.toast('Accessing the Discount Percentages...', '', -1);
+              const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
+              const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
+              var discountedItem;
+
+              spreadsheet.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 90 seconds)...', '', -1);
+
+              dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values.map(webItem => {
+                discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
+                return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem;
+              }));
+
+              spreadsheet.toast('Shopify discounts successfully updated.', 'Complete', 20)
+            }
           }      
           
-          const sheetName = sheets[sheet].getSheetName();
+          const recentlyImportedSheetName = sheets[sheet].getSheetName();
           
-          if (sheetName.substring(0, 7) !== "Copy Of" && sheetName !== 'FromAdagio' && sheetName !== 'FromShopify') // Don't delete the sheets that are duplicates
+          if (recentlyImportedSheetName.substring(0, 7) !== "Copy Of" && recentlyImportedSheetName !== 'FromAdagio' && recentlyImportedSheetName !== 'FromShopify') // Don't delete the sheets that are duplicates
             spreadsheet.deleteSheet(sheets[sheet]) // Delete the new sheet that was created
 
           break;
