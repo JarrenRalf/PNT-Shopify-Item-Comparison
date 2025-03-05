@@ -45,12 +45,14 @@ function onChange(e)
               const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
               var discountedItem;
 
-              spreadsheet.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 90 seconds)...', '', -1);
+              spreadsheet.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 80 seconds)...', '', -1);
 
               dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values.map(webItem => {
                 discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
                 return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem;
               })).activate();
+
+              dataSheet.setFrozenRows(1)
 
               spreadsheet.toast('Shopify discounts successfully updated.', 'Complete', 20)
             }
@@ -102,19 +104,21 @@ function installedOnEdit(e)
       const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
       var discountedItem;
 
-      ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 90 seconds)...', '', -1);
+      ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 110 seconds)...', '', -1);
 
       const range = sheet.getRange(1, 1, rng.rowEnd, rng.columnEnd);
       const values = range.getValues().map(webItem => {
         discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
-        return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem;
+        return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem.slice(0, 6);
       })
 
       ss.toast('Shopify discounts updated. Writing data to Discounts sheet...', '', -1);
       
-      sheet.clearContents().getRange(1, 1, rng.rowEnd - 2, rng.columnEnd - 2).setValues(values).activate();
+      sheet.clearContents().getRange(1, 1, values.length, values[0].length).setValues(values).activate();
 
       ss.toast('Discounts sheet successfully updated.', 'Complete', 20)
+
+      sheet.setFrozenRows(1);
     }
   }
   catch (error)
