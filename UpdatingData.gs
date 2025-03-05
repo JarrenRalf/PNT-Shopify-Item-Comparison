@@ -50,7 +50,7 @@ function onChange(e)
               dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values.map(webItem => {
                 discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
                 return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem;
-              }));
+              })).activate();
 
               spreadsheet.toast('Shopify discounts successfully updated.', 'Complete', 20)
             }
@@ -58,7 +58,8 @@ function onChange(e)
           
           const recentlyImportedSheetName = sheets[sheet].getSheetName();
           
-          if (recentlyImportedSheetName.substring(0, 7) !== "Copy Of" && recentlyImportedSheetName !== 'FromAdagio' && recentlyImportedSheetName !== 'FromShopify') // Don't delete the sheets that are duplicates
+           // Don't delete the sheets that are duplicates
+          if (recentlyImportedSheetName.substring(0, 7) !== "Copy Of" && recentlyImportedSheetName !== 'FromAdagio' && recentlyImportedSheetName !== 'FromShopify' && recentlyImportedSheetName !== 'Discounts')
             spreadsheet.deleteSheet(sheets[sheet]) // Delete the new sheet that was created
 
           break;
@@ -75,7 +76,7 @@ function onChange(e)
   }
 }
 
-function onEdit(e)
+function installedOnEdit(e)
 {  
   const ss  = e.source;
   const rng = e.range;
@@ -94,6 +95,27 @@ function onEdit(e)
       replaceLeadingApostrophesOnVariantSKUs(sheet, rng.columnEnd, rng.rowEnd, ss);
     else if (sheetName == 'FromAdagio' && rng.columnEnd > 24)
       ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
+    else if (sheetName == 'Discounts' && rng.columnEnd > 5)
+    {
+      ss.toast('Accessing the Discount Percentages...', '', -1);
+      const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
+      const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
+      var discountedItem;
+
+      ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 90 seconds)...', '', -1);
+
+      const range = sheet.getRange(1, 1, rng.rowEnd, rng.columnEnd);
+      const values = range.getValues().map(webItem => {
+        discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
+        return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem;
+      })
+
+      ss.toast('Shopify discounts updated. Writing data to Discounts sheet...', '', -1);
+      
+      sheet.clearContents().getRange(1, 1, rng.rowEnd - 2, rng.columnEnd - 2).setValues(values).activate();
+
+      ss.toast('Discounts sheet successfully updated.', 'Complete', 20)
+    }
   }
   catch (error)
   {
