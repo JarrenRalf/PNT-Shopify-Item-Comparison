@@ -23,13 +23,13 @@ function onChange(e)
           const values = sheets[sheet].getRange(1, 1, info[numRows], info[numCols]).getValues();
           var dataSheet = (values[0][2] === 'Body (HTML)') ? sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromShopify')] : (values[0][2] === 'disabled Body') ? 
                                                              sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromAdagio' )] : (values[0][2] === 'Price Type'   ) ? 
-                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('Discounts'  )] : null;
+                                                             sheets[sheets.map(sh => sh.getSheetName()).indexOf('FromWebsiteDiscount')] : null;
 
           if (dataSheet !== null)
           {
             const dataSheetName = dataSheet.getSheetName();
             
-            if (dataSheetName !== 'Discounts')
+            if (dataSheetName !== 'FromWebsiteDiscount')
             {
               dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values)
 
@@ -103,11 +103,12 @@ function installedOnEdit(e)
       replaceLeadingApostrophesOnVariantSKUs(sheet, rng.columnEnd, rng.rowEnd, ss);
     else if (sheetName == 'FromAdagio' && rng.columnEnd > 24)
       ss.getSheetByName("Dashboard").getRange(9, 6).setValue(timeStamp()).activate(); // Timestamp on dashboard
-    else if (sheetName == 'Discounts' && rng.columnEnd > 5)
+    else if (sheetName == 'FromWebsiteDiscount' && rng.columnEnd > 5)
     {
       ss.toast('Accessing the Discount Percentages...', '', -1);
       const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
-      const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
+      const totalNumDiscounts = discountSheet.getLastRow() - 1;
+      const discounts = discountSheet.getSheetValues(2, 11, totalNumDiscounts, 5);
       var discountedItem;
 
       ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 110 seconds)...', '', -1);
@@ -125,6 +126,8 @@ function installedOnEdit(e)
       ss.toast('Discounts sheet successfully updated.', 'Complete', 20)
 
       sheet.setFrozenRows(1);
+
+      ss.getSheetByName('Dashboard').getRange(15, 6).setValue(totalNumDiscounts);
     }
   }
   catch (error)
