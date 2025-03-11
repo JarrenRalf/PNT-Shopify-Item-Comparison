@@ -33,10 +33,10 @@ function onChange(e)
             {
               dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values)
 
-              if (dataSheet.getSheetName() == 'FromShopify')
+              if (dataSheetName == 'FromShopify')
                 replaceLeadingApostrophesOnVariantSKUs(dataSheet, info[numCols], info[numRows], spreadsheet);
               else 
-                ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
+                ss.getSheetByName("Dashboard").getRange(9, 6).setValue(timeStamp()).activate(); // Timestamp on dashboard
             }
             else // The discounts are being uploaded
             {
@@ -82,21 +82,27 @@ function installedOnEdit(e)
 {  
   const ss  = e.source;
   const rng = e.range;
-  const inputValue = e.value;
+  const row = rng.rowStart;
+  const isSingleRow = row === rng.rowEnd
   const sheet = ss.getActiveSheet();
   const sheetName = sheet.getSheetName();
   
   try
   {
-    if (sheetName == 'Dashboard' && rng.columnStart == 5 && inputValue != "FALSE")
+    if (sheetName == 'Dashboard' && rng.columnStart == 5 && rng.columnEnd == 5 && isSingleRow && rng.isChecked())
     {
-      ss.getSheetByName(inputValue).activate();
-      rng.setValue('FALSE');
+      rng.uncheck();
+      SpreadsheetApp.flush();
+
+      if (row === 10)
+        PriceUpdatesGrouped(ss)
+      else if (row === 11)
+        SaleItems(ss)
     }
     else if (sheetName == 'FromShopify' && rng.columnEnd > 40)
       replaceLeadingApostrophesOnVariantSKUs(sheet, rng.columnEnd, rng.rowEnd, ss);
     else if (sheetName == 'FromAdagio' && rng.columnEnd > 24)
-      ss.getSheetByName("Dashboard").getRange(24, 11).setValue(timeStamp()).activate(); // Timestamp on dashboard
+      ss.getSheetByName("Dashboard").getRange(9, 6).setValue(timeStamp()).activate(); // Timestamp on dashboard
     else if (sheetName == 'Discounts' && rng.columnEnd > 5)
     {
       ss.toast('Accessing the Discount Percentages...', '', -1);
@@ -128,8 +134,12 @@ function installedOnEdit(e)
   }
 }
 
-function PriceUpdatesGrouped()
+/**
+ * 
+ */
+function PriceUpdatesGrouped(ss)
 {
+  ss.toast('Price updates beginning...','')
   var startTime = new Date().getTime();
   
   const   BLUE = "#e8ecf9";
@@ -138,14 +148,13 @@ function PriceUpdatesGrouped()
   const               SKU = 6;
   const             PRICE = 7;
   const  COMPARE_AT_PRICE = 8;
-  const DASHBOARD_QTY_COL = 7;
-  const     DASHBOARD_ROW = 6;
+  const DASHBOARD_QTY_COL = 6;
+  const     DASHBOARD_ROW = 10;
   
-  const spreadsheet = SpreadsheetApp.getActive();
-  const sheet = spreadsheet.getSheetByName('Prices');
-  const dashboard = spreadsheet.getSheetByName('Dashboard');
-  const adagioSheet = spreadsheet.getSheetByName('FromAdagio');
-  const shopifySheet = spreadsheet.getSheetByName('FromShopify');
+  const sheet = ss.getSheetByName('Prices');
+  const dashboard = ss.getSheetByName('Dashboard');
+  const adagioSheet = ss.getSheetByName('FromAdagio');
+  const shopifySheet = ss.getSheetByName('FromShopify');
   var numItems_Adagio, numItems_Shopify, adagioData = [], shopifyData = [], highlightItems_Red = [], highlightItems_Green = [], masterSkuList = [], shopifyPrices = [[], []],
   fontColours = [], fontWeights = [], numberFormats = [];
 
@@ -182,10 +191,7 @@ function PriceUpdatesGrouped()
     const data = shopifyData.filter(value => masterSkuList.includes(value[MASTER_SKU]) && value[SKU] !== '')
     data.map(u => (shopifyPrices[0].includes(u[SKU])) ? u.splice(8, 1, '', shopifyPrices[1][shopifyPrices[0].indexOf(u[SKU])]) : u.splice(8, 1, '', ''))
     var items_TwoOptions = [], items_OneOption = [], items_ZeroOptions;
-
-    Logger.log(shopifyData[0])
     shopifyData[0].splice(8, 1, '', '')
-    Logger.log(shopifyData[0])
 
     items_ZeroOptions = data.filter(item => {
       if (item[5] !== '') // Option2 Value is not blank
@@ -269,11 +275,13 @@ function PriceUpdatesGrouped()
   if (sheet.getMaxRows() > numRows + 5)
     sheet.deleteRows(numRows + 5, sheet.getMaxRows() - numRows - 4); // Delete extra rows if there are any
 
-  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numHighlights, null, null, null, formattedDate, null, runTime]]);
+  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 2).setValues([[numHighlights, formattedDate]]);
+  ss.toast('','Price updates complete.')
 }
 
-function SaleItems()
+function SaleItems(ss)
 {
+  ss.toast('Sale Items beginning...','')
   var startTime = new Date().getTime();
   
   const YELLOW = "#ffffbf";
@@ -328,6 +336,10 @@ function SaleItems()
 
   if (sheet.getMaxRows() > data.length + 5)
     sheet.deleteRows(data.length + 5, sheet.getMaxRows() - data.length - 4); // Delete extra rows if there are any
+
+  ss.getSheetByName('Dashboard').getRange(11, 6, 1, 2).setValues([[saleItems.length, timeStamp()]]);
+
+  ss.toast('','Sale Items complete.')
 }
 
 function DuplicateSKUs()
@@ -374,7 +386,7 @@ function DuplicateSKUs()
   outputData[1][6] = formattedDate;
   outputData[1][2] = runTime;
   sheet.getRange(2, 2, numItems + NUM_HEADERS, shopifyData[0].length).setValues(outputData);
-  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
+  //dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
 }
 
 function ItemsMissingFromShopify()
@@ -486,7 +498,7 @@ function MissingImages()
   outputData[1][6] = formattedDate;
   outputData[1][2] = runTime;
   sheet.getRange(2, 2, numItems + NUM_HEADERS, shopData[0].length).setValues(outputData);
-  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
+  //dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
 }
 
 function MissingWeights()
@@ -535,7 +547,7 @@ function MissingWeights()
   outputData[1][6] = formattedDate;
   outputData[1][2] = runTime;
   sheet.getRange(5, 2, numItems + NUM_HEADERS, shopData[0].length).setValues(outputData);
-  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
+  //dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
 }
 
 function ItemsMissingFromShopify_NonGrouped()
@@ -559,7 +571,7 @@ function ItemsMissingFromShopify_NonGrouped()
                         adagioData[0]
   ].concat(data);
   sheets[sheetNames.indexOf("Missing - Non-Grouped")].clearContents().getRange(2, 2, numItems + NUM_HEADERS, adagioData[0].length).setNumberFormat('@').setValues(outputData);
-  sheets[sheetNames.indexOf("Dashboard")].getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
+  //sheets[sheetNames.indexOf("Dashboard")].getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
 }
 
 function ItemsMissingFromShopify_Grouped()
@@ -607,7 +619,7 @@ function ItemsMissingFromShopify_Grouped()
   ].concat(data);
   sheet.getRange('B:K').clearContent()//.setBackground(null);
   sheet.getRange(2, 2, numItems + NUM_HEADERS, numCols).setBackgrounds(colours).setNumberFormat('@').setValues(outputData);
-  sheets[sheetNames.indexOf("Dashboard")].getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
+  //sheets[sheetNames.indexOf("Dashboard")].getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
 }
 
 function DescripNotMatching()
@@ -683,7 +695,7 @@ function DescripNotMatching()
   outputData[1][6] = formattedDate;
   outputData[1][2] = runTime;
   sheet.getRange(2, 2, numItems + NUM_HEADERS, shopifyData[0].length).setValues(outputData);
-  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
+  //dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems, null, null, null, formattedDate, null, runTime]]);
 }
 
 function OnWebWithNoInventory()
@@ -881,11 +893,10 @@ function NotOnWebWithInventory()
 */
 function resetShopifyData()
 {
-  var startTime = new Date().getTime();
-  const DASHBOARD_ROW = 22;
+  const DASHBOARD_ROW = 7;
   var sheetName = 'FromShopify';
   var csvFileName = "products_export_1.csv";
-  resetData(sheetName, csvFileName, DASHBOARD_ROW, startTime);
+  resetData(sheetName, csvFileName, DASHBOARD_ROW);
 }
 
 /**
@@ -893,11 +904,10 @@ function resetShopifyData()
 */
 function resetAdagioData()
 {
-  var startTime = new Date().getTime();
-  const DASHBOARD_ROW = 24;
+  const DASHBOARD_ROW = 9;
   var sheetName = 'FromAdagio';
   var csvFileName = "For Shopify.csv";
-  resetData(sheetName, csvFileName, DASHBOARD_ROW, startTime);
+  resetData(sheetName, csvFileName, DASHBOARD_ROW);
 }
 
 /**
@@ -907,11 +917,10 @@ function resetAdagioData()
 * @param {String} csvFileName   The name of the csv file
 * @param {Number} DASHBOARD_ROW The dashboard row number to paste values to.
 */
-function resetData(sheetName, csvFileName, DASHBOARD_ROW, startTime)
+function resetData(sheetName, csvFileName, DASHBOARD_ROW)
 {
-  const       DASHBOARD_QTY_COL =  7;
-  const DASHBOARD_TIMESTAMP_COL = 10;
-  const             NUM_HEADERS =  1;
+  const DASHBOARD_QTY_COL = 6;
+  const       NUM_HEADERS = 1;
   
   var spreadsheet = SpreadsheetApp.getActive();
   var   dashboard = spreadsheet.getSheetByName("Dashboard");
@@ -923,8 +932,7 @@ function resetData(sheetName, csvFileName, DASHBOARD_ROW, startTime)
   sheet.clearContents();
   sheet.getRange(1, 1, numItems, data[0].length).setNumberFormat('@').setValues(data);
   dashboard.activate(); 
-  var runTime = elapsedTime(startTime);
-  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 7).setValues([[numItems - NUM_HEADERS, null, null, null, formattedDate, null, runTime]]);
+  dashboard.getRange(DASHBOARD_ROW, DASHBOARD_QTY_COL, 1, 2).setValues([[numItems - NUM_HEADERS, formattedDate]]);
 }
 
 function UpdateAllBeta()
@@ -938,7 +946,7 @@ function UpdateAllBeta()
   DisabledOnWeb();
   DisabledInAdagio();
   DescripNotMatching();
-  SpreadsheetApp.getActive().getSheetByName("Dashboard").getRange(4, 11, 1, 3).setValues([[timeStamp(), null, elapsedTime(startTime)]]);
+  //SpreadsheetApp.getActive().getSheetByName("Dashboard").getRange(4, 11, 1, 3).setValues([[timeStamp(), null, elapsedTime(startTime)]]);
 }
 
 /**
@@ -1033,7 +1041,7 @@ function replaceLeadingApostrophesOnVariantSKUs(sheet, numCols, numRows, spreads
   }
 
   range.setNumberFormat('@').setValues(values)
-  spreadsheet.getSheetByName("Dashboard").getRange(22, 11).setValue(timeStamp()).activate();
+  spreadsheet.getSheetByName("Dashboard").getRange(7, 6).setValue(timeStamp()).activate();
 }
 
 /**
