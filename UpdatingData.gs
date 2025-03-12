@@ -276,9 +276,9 @@ function discounts()
         shopifyItem.splice(6) // Keep only 6 columns
         shopifyItem[1] = shopifySku;
         shopifyItem[2] = '%';
-        shopifyItem[3] = discountValues[2];
-        shopifyItem[4] = discountValues[3];
-        shopifyItem[5] = discountValues[4];
+        shopifyItem[3] = (discountValues[2] === 0) ? '' : discountValues[2];
+        shopifyItem[4] = (discountValues[3] === 0) ? '' : discountValues[3];
+        shopifyItem[5] = (discountValues[4] === 0) ? '' : discountValues[4];
 
         currentWebDiscountItem = websiteDiscountValues.find(webDiscountItem => webDiscountItem[0].toString().toUpperCase() === shopifySku)
 
