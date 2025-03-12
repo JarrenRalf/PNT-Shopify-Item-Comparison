@@ -36,7 +36,7 @@ function onChange(e)
               if (dataSheetName == 'FromShopify')
                 replaceLeadingApostrophesOnVariantSKUs(dataSheet, info[numCols], info[numRows], spreadsheet);
               else 
-                ss.getSheetByName("Dashboard").getRange(9, 6).setValue(timeStamp()).activate(); // Timestamp on dashboard
+                ss.getSheetByName("Dashboard").getRange(9, 6, 1, 2).setValues([[info[numRows], timeStamp()]]).activate(); // Timestamp on dashboard
             }
             else // The discounts are being uploaded
             {
@@ -102,32 +102,33 @@ function installedOnEdit(e)
     else if (sheetName == 'FromShopify' && rng.columnEnd > 40)
       replaceLeadingApostrophesOnVariantSKUs(sheet, rng.columnEnd, rng.rowEnd, ss);
     else if (sheetName == 'FromAdagio' && rng.columnEnd > 24)
-      ss.getSheetByName("Dashboard").getRange(9, 6).setValue(timeStamp()).activate(); // Timestamp on dashboard
+      ss.getSheetByName("Dashboard").getRange(9, 7,).setValues([[rng.rowEnd - 1, timeStamp()]]); // Timestamp on dashboard
     else if (sheetName == 'FromWebsiteDiscount' && rng.columnEnd > 5)
     {
-      ss.toast('Accessing the Discount Percentages...', '', -1);
-      const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
-      const totalNumDiscounts = discountSheet.getLastRow() - 1;
-      const discounts = discountSheet.getSheetValues(2, 11, totalNumDiscounts, 5);
-      var discountedItem;
+      // ss.toast('Accessing the Discount Percentages...', '', -1);
+      // const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
+      // const totalNumDiscounts = discountSheet.getLastRow() - 1;
+      // const discounts = discountSheet.getSheetValues(2, 11, totalNumDiscounts, 5);
+      // var discountedItem;
 
-      ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 110 seconds)...', '', -1);
+      // ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 110 seconds)...', '', -1);
 
-      const range = sheet.getRange(1, 1, rng.rowEnd, rng.columnEnd);
-      const values = range.getValues().map(webItem => {
-        discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
-        return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem.slice(0, 6);
-      })
+      // const range = sheet.getRange(1, 1, rng.rowEnd, rng.columnEnd);
+      // const values = range.getValues().map(webItem => {
+      //   discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
+      //   return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem.slice(0, 6);
+      // })
 
-      ss.toast('Shopify discounts updated. Writing data to Discounts sheet...', '', -1);
+      // ss.toast('Shopify discounts updated. Writing data to Discounts sheet...', '', -1);
       
-      sheet.clearContents().getRange(1, 1, values.length, values[0].length).setValues(values).activate();
+      // sheet.clearContents().getRange(1, 1, values.length, values[0].length).setValues(values).activate();
 
-      ss.toast('Discounts sheet successfully updated.', 'Complete', 20)
+      // ss.toast('Discounts sheet successfully updated.', 'Complete', 20)
 
-      sheet.setFrozenRows(1);
+      // sheet.setFrozenRows(1);
 
       ss.getSheetByName('Dashboard').getRange(15, 6).setValue(totalNumDiscounts);
+      discounts();
     }
   }
   catch (error)
@@ -282,16 +283,70 @@ function PriceUpdatesGrouped(ss)
   ss.toast('','Price updates complete.')
 }
 
+/**
+ * 
+ */
+function discounts()
+{
+  const spreadsheet = SpreadsheetApp.getActive();
+  const discountPercentagesSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
+  const discountPercentagesValues = discountPercentagesSheet.getSheetValues(2, 11, discountPercentagesSheet.getLastRow() - 1, 5);
+  const websiteDiscountSheet = spreadsheet.getSheetByName('FromWebsiteDiscount');
+  const websiteDiscountValues = websiteDiscountSheet.getSheetValues(2, 2, websiteDiscountSheet.getLastRow() - 1, 5)
+  const shopifySheet = spreadsheet.getSheetByName('FromShopify');
+  const numRows_FromShopify = shopifySheet.getLastRow() - 1;
+  const shopifySheetHeader = shopifySheet.getSheetValues(1, 1, 1, shopifySheet.getLastColumn())[0];
+  const variantSkuIdx = shopifySheetHeader.indexOf('Variant SKU') + 1
+  const masterSkus = shopifySheet.getSheetValues(2, 1, numRows_FromShopify, 1); 
+  var discountValues, shopifySku, currentWebDiscountItem;
+
+  const discounts = shopifySheet.getSheetValues(2, variantSkuIdx, numRows_FromShopify, shopifySheetHeader.indexOf('Variant Compare At Price') - variantSkuIdx + 2).map((shopifyItem, mstrSkuIdx) => {
+
+    if (shopifyItem.pop() === '') // This item is not on sale
+    {
+      shopifySku = shopifyItem[0].toString().toUpperCase();
+      discountValues = discountPercentagesValues.find(discountedItem => discountedItem[0].split(" - ").pop().toString().toUpperCase() === shopifySku);
+
+      if (discountValues != null) // Found on the Discount Percentages sheet
+      {
+        shopifyItem.splice(6) // Keep only 6 columns
+        shopifyItem[1] = shopifySku;
+        shopifyItem[2] = '%';
+        shopifyItem[3] = discountValues[2];
+        shopifyItem[4] = discountValues[3];
+        shopifyItem[5] = discountValues[4];
+
+        currentWebDiscountItem = websiteDiscountValues.find(webDiscountItem => webDiscountItem[0].toString().toUpperCase() === shopifySku)
+
+        if (currentWebDiscountItem != null && (currentWebDiscountItem[2] != shopifyItem[3] || currentWebDiscountItem[2] != shopifyItem[4] || currentWebDiscountItem[2] != shopifyItem[5])) // Atleast 1 discount is different
+        {
+          shopifyItem[0] = masterSkus[mstrSkuIdx][0];
+          return shopifyItem
+        }
+        else
+          return true;
+      }
+      else // These items were not found on the discount percentages sheet
+        return true;
+    }
+    else // This item is on sale
+      return true;
+  }).filter(item => !item)
+
+  const numRows = discounts.unshift(['Handle',	'SKU', 'Price Type',	'GUIDE',	'Lodge',	'Wholesale'])
+  spreadsheet.getSheetByName('Discounts').clearContents().getRange(1, 1, numRows, 6).setValues(discounts)
+}
+
 function SaleItems(ss)
 {
   ss.toast('Sale Items beginning...','')
   var startTime = new Date().getTime();
   
   const YELLOW = "#ffffbf";
-  const        MASTER_SKU = 0;
-  const               SKU = 6;
-  const             PRICE = 7;
-  const  COMPARE_AT_PRICE = 8;
+  const       MASTER_SKU = 0;
+  const              SKU = 6;
+  const            PRICE = 7;
+  const COMPARE_AT_PRICE = 8;
   const  spreadsheet = SpreadsheetApp.getActive();
   const        sheet = spreadsheet.getSheetByName('Sale Items');
   const  adagioSheet = spreadsheet.getSheetByName('FromAdagio');
@@ -1044,7 +1099,7 @@ function replaceLeadingApostrophesOnVariantSKUs(sheet, numCols, numRows, spreads
   }
 
   range.setNumberFormat('@').setValues(values)
-  spreadsheet.getSheetByName("Dashboard").getRange(7, 6).setValue(timeStamp()).activate();
+  spreadsheet.getSheetByName("Dashboard").getRange(7, 7).setValue(timeStamp()).activate();
 }
 
 /**
@@ -1129,7 +1184,7 @@ function timeStamp()
   var   spreadsheet = SpreadsheetApp.getActive()
   var      timeZone = spreadsheet.getSpreadsheetTimeZone();
   var         today = new Date();
-  var        format = "EEE, dd MMM yyyy HH:mm:ss";
+  var        format = "dd MMM HH:mm";
   var formattedDate = Utilities.formatDate(today, timeZone, format);
   
   return formattedDate;
