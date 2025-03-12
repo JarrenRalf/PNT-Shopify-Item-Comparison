@@ -38,24 +38,6 @@ function onChange(e)
               else 
                 ss.getSheetByName("Dashboard").getRange(9, 6, 1, 2).setValues([[info[numRows], timeStamp()]]).activate(); // Timestamp on dashboard
             }
-            else // The discounts are being uploaded
-            {
-              spreadsheet.toast('Accessing the Discount Percentages...', '', -1);
-              const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
-              const discounts = discountSheet.getSheetValues(2, 11, discountSheet.getLastRow() - 1, 5);
-              var discountedItem;
-
-              spreadsheet.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 80 seconds)...', '', -1);
-
-              dataSheet.clearContents().getRange(1, 1, info[numRows], info[numCols]).setValues(values.map(webItem => {
-                discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
-                return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem;
-              })).activate();
-
-              dataSheet.setFrozenRows(1)
-
-              spreadsheet.toast('Shopify discounts successfully updated.', 'Complete', 20)
-            }
           }      
           
           const recentlyImportedSheetName = sheets[sheet].getSheetName();
@@ -102,32 +84,11 @@ function installedOnEdit(e)
     else if (sheetName == 'FromShopify' && rng.columnEnd > 40)
       replaceLeadingApostrophesOnVariantSKUs(sheet, rng.columnEnd, rng.rowEnd, ss);
     else if (sheetName == 'FromAdagio' && rng.columnEnd > 24)
-      ss.getSheetByName("Dashboard").getRange(9, 7,).setValues([[rng.rowEnd - 1, timeStamp()]]); // Timestamp on dashboard
+      ss.getSheetByName("Dashboard").getRange(9, 7,).setValues([[rng.rowEnd - 1, timeStamp()]]).activate(); // Timestamp on dashboard
     else if (sheetName == 'FromWebsiteDiscount' && rng.columnEnd > 5)
     {
-      // ss.toast('Accessing the Discount Percentages...', '', -1);
-      // const discountSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
-      // const totalNumDiscounts = discountSheet.getLastRow() - 1;
-      // const discounts = discountSheet.getSheetValues(2, 11, totalNumDiscounts, 5);
-      // var discountedItem;
-
-      // ss.toast('Discount Percentages acquired. Updating the Shopify discounts (Approx 110 seconds)...', '', -1);
-
-      // const range = sheet.getRange(1, 1, rng.rowEnd, rng.columnEnd);
-      // const values = range.getValues().map(webItem => {
-      //   discountedItem = discounts.find(item => item[0].split(' - ').pop().toString().toUpperCase() === webItem[1].toString().toUpperCase());
-      //   return (discountedItem != null) ? [webItem[0], webItem[1], webItem[2], discountedItem[2], discountedItem[3], discountedItem[4]] : webItem.slice(0, 6);
-      // })
-
-      // ss.toast('Shopify discounts updated. Writing data to Discounts sheet...', '', -1);
-      
-      // sheet.clearContents().getRange(1, 1, values.length, values[0].length).setValues(values).activate();
-
-      // ss.toast('Discounts sheet successfully updated.', 'Complete', 20)
-
-      // sheet.setFrozenRows(1);
-
-      ss.getSheetByName('Dashboard').getRange(15, 6).setValue(totalNumDiscounts);
+      sheet.setFrozenRows(1);
+      ss.getSheetByName('Dashboard').getRange(13, 7).setValue(timeStamp()).activate();
       discounts();
     }
   }
@@ -284,11 +245,14 @@ function PriceUpdatesGrouped(ss)
 }
 
 /**
+ * This function looks for the items that are on the website but do not have the most up to date discount structure, determined by the Discounts spreadsheets.
  * 
+ * @author Jarren Ralf
  */
 function discounts()
 {
   const spreadsheet = SpreadsheetApp.getActive();
+  spreadsheet.toast('Updating Discounts...', '', -1)
   const discountPercentagesSheet = SpreadsheetApp.openById('1gXQ7uKEYPtyvFGZVmlcbaY6n6QicPBhnCBxk-xqwcFs').getSheetByName('Discount Percentages');
   const discountPercentagesValues = discountPercentagesSheet.getSheetValues(2, 11, discountPercentagesSheet.getLastRow() - 1, 5);
   const websiteDiscountSheet = spreadsheet.getSheetByName('FromWebsiteDiscount');
@@ -318,23 +282,25 @@ function discounts()
 
         currentWebDiscountItem = websiteDiscountValues.find(webDiscountItem => webDiscountItem[0].toString().toUpperCase() === shopifySku)
 
-        if (currentWebDiscountItem != null && (currentWebDiscountItem[2] != shopifyItem[3] || currentWebDiscountItem[2] != shopifyItem[4] || currentWebDiscountItem[2] != shopifyItem[5])) // Atleast 1 discount is different
+        if (currentWebDiscountItem != null && (currentWebDiscountItem[2] != shopifyItem[3] || currentWebDiscountItem[3] != shopifyItem[4] || currentWebDiscountItem[4] != shopifyItem[5])) // Atleast 1 discount is different
         {
           shopifyItem[0] = masterSkus[mstrSkuIdx][0];
           return shopifyItem
         }
-        else
-          return true;
+        else // All discounts on the website are the same
+          return null;
       }
       else // These items were not found on the discount percentages sheet
-        return true;
+        return null;
     }
     else // This item is on sale
-      return true;
-  }).filter(item => !item)
+      return null;
+  }).filter(item => item)
 
   const numRows = discounts.unshift(['Handle',	'SKU', 'Price Type',	'GUIDE',	'Lodge',	'Wholesale'])
   spreadsheet.getSheetByName('Discounts').clearContents().getRange(1, 1, numRows, 6).setValues(discounts)
+  spreadsheet.getSheetByName('Dashboard').getRange(14, 7).setValue(timeStamp());
+  spreadsheet.toast('', 'Discounts Updated.', -1)
 }
 
 function SaleItems(ss)
@@ -532,7 +498,7 @@ function MissingImages()
   var shopifySheet = spreadsheet.getSheetByName("FromShopify");
   [shopifyData_, numItems_Shopify] = generateData(shopifySheet, "Published", "Image Src");
 
-  var shopData = shopifyData_.filter(value => value[DESCRIPTION] != '' && value[PUBLISHED] == "TRUE" && value[IMAGE_SOURCE] == '');
+  var shopData = shopifyData_.filter(value => value[DESCRIPTION] != '' && value[PUBLISHED] == "true" && value[IMAGE_SOURCE] == '');
   var shopifyData__  = shopData.filter(value => value.splice(IMAGE_SOURCE)); // Remove the 'Image Source' column
   var data = shopifyData__.filter(value => value.splice(PUBLISHED, 1));      // Remove the 'Published' column
   var numItems = data.length;
